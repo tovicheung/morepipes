@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "morepipes"
+version = "1.0.0"
+description = "Extended pipes for functional programming"
+readme = "README.md"
+license = { file = "LICENSE" }
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "pipe >= 2.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/tovicheung/morepipes"

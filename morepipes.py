@@ -5,7 +5,7 @@ from collections.abc import Iterable
 
 from typing import Self
 
-EMPTY = object()
+_EMPTY = object()
 
 # Partial pipes
 class _PartialPipe(Pipe):
@@ -24,9 +24,9 @@ P = _PartialPipe(lambda x: x) # must be constructed like this
 from pipe import sort, reverse
 
 @Pipe
-def collect(iterable, typ=EMPTY):
+def collect(iterable, typ=_EMPTY):
     # consumes iterator if typ is not specified
-    if typ is EMPTY:
+    if typ is _EMPTY:
         deque(iterable, maxlen=0) # consume at C speed without storing elements
     else:
         return typ(iterable)
