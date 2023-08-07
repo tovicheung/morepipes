@@ -1,12 +1,29 @@
 from __future__ import annotations
 
-from pipe import Pipe
 import itertools as _itertools
 import functools as _functools
-from collections import deque
+from collections import deque as _deque
 from collections.abc import Iterable, Sequence
 
+from pipe import Pipe
+
+
+# Helpers
+
 _EMPTY = object()
+
+def _consume(iterator):
+     # consume iterator at C speed without storing elements
+    _deque(iterator, maxlen=0)
+
+def _complement(func):
+    def f(*args, **kwargs):
+        return not func(*args, **kwargs)
+    return f
+
+def _identity(x):
+    return x
+
 
 # Partial pipes
 class _PartialPipe(Pipe):
@@ -15,7 +32,7 @@ class _PartialPipe(Pipe):
             return type(self)(lambda obj, *args, **kwargs: other.function(self.function(obj, *args, **kwargs)))
         return NotImplemented
 
-P = _PartialPipe(lambda x: x) # must be constructed like this
+P = _PartialPipe(_identity) # must be constructed with identity function
 
 
 # Generate iterator
@@ -24,17 +41,11 @@ P = _PartialPipe(lambda x: x) # must be constructed like this
 @Pipe
 def repeat(obj, n=_EMPTY):
     return _itertools.repeat(obj, n)
-    # if n is _EMPTY:
-    #     while True:
-    #         yield obj
-    # else:
-    #     for _ in range(n):
-    #         yield obj
 
 
 # Pipe tails
-# These pipes should be the tail of pipes in most cases
-# May not necessarily return iterable that can be further piped
+# These pipes should be the tail of a chain of pipes in most cases
+# May not necessarily return an iterable that can be further piped
 
 from pipe import sort, reverse
 
@@ -42,14 +53,16 @@ from pipe import sort, reverse
 def collect(iterable, typ=_EMPTY):
     # consumes iterator if typ is not specified
     if typ is _EMPTY:
-        deque(iterable, maxlen=0) # consume at C speed without storing elements
+        _consume(iterable)
     else:
         return typ(iterable)
+    
+consume = collect
 
 @Pipe
 def ilen(iterable):
     counter = _itertools.count()
-    deque(zip(iterable, counter), maxlen=0) # consume at C speed without storing elements
+    _consume(zip(iterable, counter))
     return next(counter)
 
 @Pipe
@@ -183,11 +196,6 @@ def chunks(iterable, n):
 # Length of iterable may change (often by predicate), lazily evaluated
 
 from pipe import select, where
-
-def _complement(func):
-    def f(*args, **kwargs):
-        return not func(*args, **kwargs)
-    return f
 
 imap = select
 
