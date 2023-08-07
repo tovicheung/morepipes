@@ -191,6 +191,16 @@ def chunks(iterable, n):
         yield chunk
         chunk = it | take(n) | collect(list)
 
+@Pipe
+def islice(iterable, start, stop=_EMPTY, step=_EMPTY):
+    if stop is _EMPTY and step is _EMPTY:
+        return _itertools.islice(iterable, start)
+    return _itertools.islice(iterable, start, stop, step)
+
+@Pipe
+def alternate(iterable):
+    return iterable | enumerations | where(lambda x: x[0] % 2 == 0) | imap(lambda x: x[1])
+
 
 # Transform and filter iterables
 # Length of iterable may change (often by predicate), lazily evaluated
@@ -236,3 +246,5 @@ if __name__ == "__main__":
     assert [1, 3, 5, 6, 2] | reduce(lambda x, y: x + y) == 17
 
     assert range(8) | imap(lambda x: x * 2) | last == 14
+
+    assert range(9) | alternate | collect(list) == [0, 2, 4, 6, 8]
