@@ -1,16 +1,16 @@
+from __future__ import annotations
+
 from pipe import Pipe
 import itertools as _itertools
 import functools as _functools
 from collections import deque
 from collections.abc import Iterable, Sequence
 
-from typing import Self
-
 _EMPTY = object()
 
 # Partial pipes
 class _PartialPipe(Pipe):
-    def __or__(self, other) -> Self:
+    def __or__(self, other) -> "_PartialPipe":
         if isinstance(other, Pipe):
             return type(self)(lambda obj, *args, **kwargs: other.function(self.function(obj, *args, **kwargs)))
         return NotImplemented
