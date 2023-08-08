@@ -54,6 +54,8 @@ def collect(iterable, typ=_EMPTY):
     # consumes iterator if typ is not specified
     if typ is _EMPTY:
         _consume(iterable)
+    elif issubclass(typ, str):
+        return "".join(iterable)
     else:
         return typ(iterable)
     
@@ -201,6 +203,22 @@ def islice(iterable, start, stop=_EMPTY, step=_EMPTY):
 def alternate(iterable):
     return iterable | enumerations | where(lambda x: x[0] % 2 == 0) | imap(lambda x: x[1])
 
+@Pipe
+def unique(iterable):
+    seen = set()
+    for item in iterable:
+        if item not in seen:
+            seen.add(item)
+            yield item
+
+@Pipe
+def squeeze(iterable):
+    last = object()
+    for item in iterable:
+        if item != last:
+            yield item
+            last = item
+
 
 # Transform and filter iterables
 # Length of iterable may change (often by predicate), lazily evaluated
@@ -218,6 +236,7 @@ reject = wherenot # not related to select
 @Pipe
 def keep(iterable, f):
     return iterable | imap(f) | where(bool)
+
 
 if __name__ == "__main__":
     def iseven(value):
@@ -248,3 +267,6 @@ if __name__ == "__main__":
     assert range(8) | imap(lambda x: x * 2) | last == 14
 
     assert range(9) | alternate | collect(list) == [0, 2, 4, 6, 8]
+
+    assert "Hello woooorld!" | squeeze | collect(str) == "Helo world!"
+    assert "Hello woooorld!" | unique | collect(str) == "Helo wrd!"
