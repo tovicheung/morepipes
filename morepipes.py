@@ -128,7 +128,10 @@ def inspect(iterable):
 # Manipulate iterables
 # Length of iterable may change, lazy evaluated
 
-from pipe import tail
+from pipe import tail, transpose, islice, izip, chain, chain_with, groupby, take_while, skip_while, traverse, permutations
+
+takewhile = take_while
+skipwhile = skip_while
 
 @Pipe
 def cycle(iterable):
@@ -197,17 +200,12 @@ def chunks(iterable, n):
         chunk = it | take(n) | collect(list)
 
 @Pipe
-def islice(iterable, start, stop=_EMPTY, step=_EMPTY):
-    if stop is _EMPTY and step is _EMPTY:
-        return _itertools.islice(iterable, start)
-    return _itertools.islice(iterable, start, stop, step)
-
-@Pipe
 def alternate(iterable):
     return iterable | enumerations | where(lambda x: x[0] % 2 == 0) | imap(lambda x: x[1])
 
 @Pipe
 def unique(iterable):
+    # not to be confused with pipe.uniq
     seen = set()
     for item in iterable:
         if item not in seen:
