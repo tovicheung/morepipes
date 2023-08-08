@@ -27,12 +27,15 @@ def _identity(x):
 
 # Partial pipes
 class _PartialPipe(Pipe):
+    def __init__(self):
+        self.function = _identity # must be constructed with identity function
+
     def __or__(self, other) -> "_PartialPipe":
         if isinstance(other, Pipe):
             return type(self)(lambda obj, *args, **kwargs: other.function(self.function(obj, *args, **kwargs)))
         return NotImplemented
 
-P = _PartialPipe(_identity) # must be constructed with identity function
+P = _PartialPipe()
 
 
 # Generate iterator
