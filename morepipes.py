@@ -148,7 +148,11 @@ def asserteq(target, obj):
 from pipe import tail, transpose, islice, izip, chain, chain_with, groupby, take_while, skip_while, traverse as _traverse, permutations
 
 takewhile = take_while
-skipwhile = skip_while
+dropwhile = skipwhile = skip_while
+
+@Pipe
+def combinations(iterable):
+    return _itertools.combinations(iterable)
 
 @Pipe
 def cycle(iterable):
