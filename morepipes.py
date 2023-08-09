@@ -26,6 +26,7 @@ def _identity(x):
 
 
 # Partial pipes
+
 class _PartialPipe(Pipe):
     def __call__(self, arg):
         # Enables passing partial pipes to map functions
@@ -49,9 +50,9 @@ def repeat(obj, n=_EMPTY):
     return _itertools.repeat(obj, n)
 
 
-# Pipe tails
-# These pipes should be the tail of a chain of pipes in most cases
-# May not necessarily return an iterable that can be further piped
+# Iteration tails
+# These pipes should be the tail of a chain of lazily-evaluated pipes in most cases
+# They consume the iterator with the pipes
 
 from pipe import sort, reverse
 
@@ -120,6 +121,7 @@ def reduce(iterable, predicate, initial=_EMPTY):
 
 
 # Side effects
+# Items will pass right through unmodified
 
 @Pipe
 def foreach(iterable, func):
@@ -136,6 +138,11 @@ def asserteach(iterable, predicate):
     for item in iterable:
         assert predicate(item)
         yield item
+
+@Pipe
+def asserteq(target, obj):
+    assert target == obj
+    return target
 
 
 # Manipulate iterables
@@ -238,10 +245,10 @@ def traverse(objs, key=_identity):
     if isinstance(objs, (str, bytes)):
         yield objs
         return
+    objs = key(objs)
     for obj in objs:
-        obj = key(obj)
         try:
-            yield from obj | traverse
+            yield from obj | traverse(key)
         except TypeError:
             yield obj
 
@@ -288,14 +295,11 @@ if __name__ == "__main__":
     assert obj | repeat(5) | take(1) | collect(list) | first is obj
     assert [1, 3, 5, 7, 6, 9, 11, 13] | find(iseven) == 6
 
-    assert [1, 3, 5, 6, 2] | reduce(lambda x, y: x + y) == 17
-
     assert range(8) | imap(lambda x: x * 2) | last == 14
 
     assert range(9) | alternate | collect(list) == [0, 2, 4, 6, 8]
 
-    assert "Hello woooorld!" | squeeze | collect(str) == "Helo world!"
-    assert "Hello woooorld!" | unique | collect(str) == "Helo wrd!"
+    "Hello woooorld!" | squeeze | collect(str) | asserteq("Helo world!") | unique | collect(str) | asserteq("Helo wrd!")
 
     assert range(9) | wherenot(iseven) | inone(iseven)
     assert range(9) | where(iseven) | inone(iseven) is False
@@ -311,3 +315,10 @@ if __name__ == "__main__":
     assert "ABC" | imap(tostrcode) | collect(str) == "656667"
 
     range(9) | where(iseven) | asserteach(iseven) | consume
+
+    assert range(8) | reduce(lambda x, y: x + y) == range(8) | isum == 28
+
+    [[1, 2, 3], [4, 5, 6]] | traverse(P | reverse) | collect(list) | asserteq([6, 5, 4, 3, 2, 1])
+
+    # traverse subclasses
+    object | traverse(type.__subclasses__) | consume
