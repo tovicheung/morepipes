@@ -4,9 +4,14 @@ import itertools as _itertools
 import functools as _functools
 from collections import deque as _deque
 from collections.abc import Iterable, Sequence
+from typing import Generic, TypeVar, TYPE_CHECKING, Callable, ParamSpec, Optional
 
-from pipe import Pipe
+if not TYPE_CHECKING:
+    from pipe import Pipe
 
+_T = TypeVar("_T")
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
 
 # Helpers
 
@@ -23,6 +28,28 @@ def _complement(func):
 
 def _identity(x):
     return x
+
+
+# Typed for linters and type checkers, not used during runtime
+
+if TYPE_CHECKING:
+    class Pipe(Generic[_P, _R]):
+        def __init__(self, function: Callable[_P, _R]):
+            self.function = function
+            # _functools.update_wrapper(self, function)
+
+        def __ror__(self, *args: _P.args, **kwargs: _P.kwargs) -> _R:
+            # __ror__ always receive one argument
+            # tell the type system to trust that all arguments are supplied
+            return self.function(*args, **kwargs)
+
+        def __call__(self, *args, **kwargs):
+            # (near) Impossible to type
+            return Pipe(
+                lambda iterable, *args2, **kwargs2: self.function(
+                    iterable, *args, *args2, **kwargs, **kwargs2
+                )
+            )
 
 
 # Partial pipes
@@ -46,7 +73,9 @@ P = _PartialPipe(_identity) # the HEAD of partial pipes must be constructed with
 # These pipes take in objects of any type and generate an iterator for piping
 
 @Pipe
-def repeat(obj, n=_EMPTY):
+def repeat(obj: _T, n=_EMPTY):
+    if n is _EMPTY:
+        return _itertools.repeat(obj)
     return _itertools.repeat(obj, n)
 
 
@@ -92,7 +121,7 @@ def inone(iterable, predicate):
     return all((not predicate(x)) for x in iterable)
 
 @Pipe
-def first(iterable):
+def first(iterable: Iterable[_T]) -> Optional[_T]:
     return next(iter(iterable), None)
 
 @Pipe
@@ -323,3 +352,5 @@ if __name__ == "__main__":
 
     # traverse subclasses
     object | traverse(type.__subclasses__) | consume
+
+    a = [1, 2, 3, 4] | first
