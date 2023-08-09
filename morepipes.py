@@ -57,16 +57,13 @@ def repeat(obj, n=_EMPTY):
 from pipe import sort, reverse
 
 @Pipe
-def collect(iterable, typ=_EMPTY):
+def collect(iterable, typ=list):
     # consumes iterator if typ is not specified
-    if typ is _EMPTY:
-        _consume(iterable)
-    elif issubclass(typ, str):
-        return "".join(iterable)
-    else:
-        return typ(iterable)
-    
-consume = collect
+    if issubclass(typ, str):
+        return typ().join(iterable)
+    return typ(iterable)
+
+consume = Pipe(_consume)
 
 @Pipe
 def ilen(iterable):
@@ -212,12 +209,12 @@ def interpose(iterable, sep):
 def chunks(iterable, n):
     # TODO: separate implementation for sequences that support slicing
     it = iter(iterable)
-    chunk = it | take(n) | collect(list)
+    chunk = it | take(n) | collect
     while True:
         if len(chunk) < n:
             break
         yield chunk
-        chunk = it | take(n) | collect(list)
+        chunk = it | take(n) | collect
 
 @Pipe
 def alternate(iterable):
@@ -278,26 +275,26 @@ if __name__ == "__main__":
     def ismul3(value):
         return value % 3 == 0
     
-    assert range(9) | butlast | collect(list) == list(range(8))
+    assert range(9) | butlast | collect == list(range(8))
     assert range(9) | take(3) | ilen == 3
-    assert [[1, 2, 3], (9, 8, 7), 4, 6] | flatten | collect(list) == [[1, 2, 3], (9, 8, 7), 4, 6] | flattento(list) == [1, 2, 3, 9, 8, 7, 4, 6]
-    assert range(4) | interpose(-1) | collect(list) == [0, -1, 1, -1, 2, -1, 3]
+    assert [[1, 2, 3], (9, 8, 7), 4, 6] | flatten | collect == [[1, 2, 3], (9, 8, 7), 4, 6] | flattento(list) == [1, 2, 3, 9, 8, 7, 4, 6]
+    assert range(4) | interpose(-1) | collect == [0, -1, 1, -1, 2, -1, 3]
 
-    assert range(9) | where(iseven) | wherenot(ismul3) | collect(list) == [2, 4, 8]
-    assert range(9) | keep(lambda x: x % 3) | collect(list) == [1, 2, 1, 2, 1, 2]
+    assert range(9) | where(iseven) | wherenot(ismul3) | collect == [2, 4, 8]
+    assert range(9) | keep(lambda x: x % 3) | collect == [1, 2, 1, 2, 1, 2]
 
     s = P | where(iseven) | wherenot(ismul3)
-    assert range(9) | s | collect(list) == [2, 4, 8]
+    assert range(9) | s | collect == [2, 4, 8]
 
-    assert range(7) | chunks(3) | collect(list) == [[0, 1, 2], [3, 4, 5]]
+    assert range(7) | chunks(3) | collect == [[0, 1, 2], [3, 4, 5]]
     
     obj = object()
-    assert obj | repeat(5) | take(1) | collect(list) | first is obj
+    assert obj | repeat(5) | take(1) | collect | first is obj
     assert [1, 3, 5, 7, 6, 9, 11, 13] | find(iseven) == 6
 
     assert range(8) | imap(lambda x: x * 2) | last == 14
 
-    assert range(9) | alternate | collect(list) == [0, 2, 4, 6, 8]
+    assert range(9) | alternate | collect == [0, 2, 4, 6, 8]
 
     "Hello woooorld!" | squeeze | collect(str) | asserteq("Helo world!") | unique | collect(str) | asserteq("Helo wrd!")
 
@@ -318,7 +315,7 @@ if __name__ == "__main__":
 
     assert range(8) | reduce(lambda x, y: x + y) == range(8) | isum == 28
 
-    [[1, 2, 3], [4, 5, 6]] | traverse(P | reverse) | collect(list) | asserteq([6, 5, 4, 3, 2, 1])
+    [[1, 2, 3], [4, 5, 6]] | traverse(P | reverse) | collect | asserteq([6, 5, 4, 3, 2, 1])
 
     # traverse subclasses
     object | traverse(type.__subclasses__) | consume
