@@ -131,6 +131,12 @@ def foreach(iterable, func):
 def inspect(iterable):
     return iterable | foreach(print)
 
+@Pipe
+def asserteach(iterable, predicate):
+    for item in iterable:
+        assert predicate(item)
+        yield item
+
 
 # Manipulate iterables
 # Length of iterable may change, lazy evaluated
@@ -303,3 +309,5 @@ if __name__ == "__main__":
     # OR
     tostrcode = P | ord | str
     assert "ABC" | imap(tostrcode) | collect(str) == "656667"
+
+    range(9) | where(iseven) | asserteach(iseven) | consume
