@@ -27,15 +27,18 @@ def _identity(x):
 
 # Partial pipes
 class _PartialPipe(Pipe):
-    def __init__(self):
-        self.function = _identity # must be constructed with identity function
+    def __call__(self, arg):
+        # Enables passing partial pipes to map functions
+        return self.function(arg)
 
     def __or__(self, other) -> "_PartialPipe":
         if isinstance(other, Pipe):
             return type(self)(lambda obj, *args, **kwargs: other.function(self.function(obj, *args, **kwargs)))
+        elif callable(other):
+            return type(self)(lambda obj, *args, **kwargs: other(self.function(obj, *args, **kwargs)))
         return NotImplemented
 
-P = _PartialPipe()
+P = _PartialPipe(_identity) # the HEAD of partial pipes must be constructed with identity function
 
 
 # Generate iterator
@@ -87,6 +90,10 @@ def iany(iterable, predicate):
     return any(predicate(x) for x in iterable)
 
 @Pipe
+def inone(iterable, predicate):
+    return all((not predicate(x)) for x in iterable)
+
+@Pipe
 def first(iterable):
     return next(iter(iterable), None)
 
@@ -128,7 +135,7 @@ def inspect(iterable):
 # Manipulate iterables
 # Length of iterable may change, lazy evaluated
 
-from pipe import tail, transpose, islice, izip, chain, chain_with, groupby, take_while, skip_while, traverse, permutations
+from pipe import tail, transpose, islice, izip, chain, chain_with, groupby, take_while, skip_while, traverse as _traverse, permutations
 
 takewhile = take_while
 skipwhile = skip_while
@@ -220,6 +227,18 @@ def squeeze(iterable):
             yield item
             last = item
 
+@Pipe
+def traverse(objs, key=_identity):
+    if isinstance(objs, (str, bytes)):
+        yield objs
+        return
+    for obj in objs:
+        obj = key(obj)
+        try:
+            yield from obj | traverse
+        except TypeError:
+            yield obj
+
 
 # Transform and filter iterables
 # Length of iterable may change (often by predicate), lazily evaluated
@@ -271,3 +290,16 @@ if __name__ == "__main__":
 
     assert "Hello woooorld!" | squeeze | collect(str) == "Helo world!"
     assert "Hello woooorld!" | unique | collect(str) == "Helo wrd!"
+
+    assert range(9) | wherenot(iseven) | inone(iseven)
+    assert range(9) | where(iseven) | inone(iseven) is False
+    
+    assert "ABC" | imap(
+        P | Pipe(ord) | Pipe(str)
+    ) | collect(str) == "656667"
+    # OR
+    tostrcode = P | Pipe(ord) | Pipe(str)
+    assert "ABC" | imap(tostrcode) | collect(str) == "656667"
+    # OR
+    tostrcode = P | ord | str
+    assert "ABC" | imap(tostrcode) | collect(str) == "656667"
