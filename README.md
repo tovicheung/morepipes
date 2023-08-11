@@ -9,7 +9,7 @@ Some pipes are inspired by other programming languages (eg Rust)
 ## Examples
 Consume iterable
 ```py
-range(9) | where(lambda x: x % 2) | collect(list)
+range(9) | where(lambda x: x % 2) | collect
 # List of odd numbers
 ```
 Side effects
@@ -31,6 +31,18 @@ Using a partial pipe
 ```py
 [1, 3, 4, 2] | reverse_sort
 # Just like any other pipe
+# Strictly equivalent to:
+[1, 3, 4, 2] | reverse | sort
+# as if P is replaced by [1, 3, 4, 2]
 ```
 ---
+
 Have fun!
+
+---
+
+## Todos
+- add full type annotation support
+    - piping (dunder ror) can be typed easily
+    - there is seemingly no way to type varargs currying (supported by the original `pipe` library)
+- alternative implementation on `chunk` for sequences (supports slicing)

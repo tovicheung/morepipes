@@ -62,7 +62,7 @@ class _PartialPipe(Pipe):
     def __or__(self, other) -> "_PartialPipe":
         if isinstance(other, Pipe):
             return type(self)(lambda obj, *args, **kwargs: other.function(self.function(obj, *args, **kwargs)))
-        elif callable(other):
+        if callable(other):
             return type(self)(lambda obj, *args, **kwargs: other(self.function(obj, *args, **kwargs)))
         return NotImplemented
 
@@ -160,7 +160,7 @@ def inspect(iterable):
     return iterable | foreach(print)
 
 @Pipe
-def asserteach(iterable, predicate):
+def asserteach(iterable, predicate=_identity):
     for item in iterable:
         assert predicate(item)
         yield item
@@ -240,7 +240,6 @@ def interpose(iterable, sep):
 
 @Pipe
 def chunks(iterable, n):
-    # TODO: separate implementation for sequences that support slicing
     it = iter(iterable)
     chunk = it | take(n) | collect
     while True:
@@ -264,19 +263,18 @@ def unique(iterable):
 
 @Pipe
 def squeeze(iterable):
-    last = object()
+    prev = object()
     for item in iterable:
-        if item != last:
+        if item != prev:
             yield item
-            last = item
+            prev = item
 
 @Pipe
 def traverse(objs, key=_identity):
     if isinstance(objs, (str, bytes)):
         yield objs
         return
-    objs = key(objs)
-    for obj in objs:
+    for obj in key(objs):
         try:
             yield from obj | traverse(key)
         except TypeError:
@@ -307,7 +305,7 @@ if __name__ == "__main__":
 
     def ismul3(value):
         return value % 3 == 0
-    
+
     assert range(9) | butlast | collect == list(range(8))
     assert range(9) | take(3) | ilen == 3
     assert [[1, 2, 3], (9, 8, 7), 4, 6] | flatten | collect == [[1, 2, 3], (9, 8, 7), 4, 6] | flattento(list) == [1, 2, 3, 9, 8, 7, 4, 6]
@@ -320,7 +318,7 @@ if __name__ == "__main__":
     assert range(9) | s | collect == [2, 4, 8]
 
     assert range(7) | chunks(3) | collect == [[0, 1, 2], [3, 4, 5]]
-    
+
     obj = object()
     assert obj | repeat(5) | take(1) | collect | first is obj
     assert [1, 3, 5, 7, 6, 9, 11, 13] | find(iseven) == 6
@@ -333,7 +331,7 @@ if __name__ == "__main__":
 
     assert range(9) | wherenot(iseven) | inone(iseven)
     assert range(9) | where(iseven) | inone(iseven) is False
-    
+
     assert "ABC" | imap(
         P | Pipe(ord) | Pipe(str)
     ) | collect(str) == "656667"
