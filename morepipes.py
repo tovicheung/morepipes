@@ -9,7 +9,6 @@ from typing import Generic, TypeVar, TYPE_CHECKING, Callable, ParamSpec, Optiona
 if not TYPE_CHECKING:
     from pipe import Pipe
 
-_T = TypeVar("_T")
 _P = ParamSpec("_P")
 _R = TypeVar("_R")
 
@@ -73,7 +72,7 @@ P = _PartialPipe(_identity) # the HEAD of partial pipes must be constructed with
 # These pipes take in objects of any type and generate an iterator for piping
 
 @Pipe
-def repeat(obj: _T, n=_EMPTY):
+def repeat(obj, n=_EMPTY):
     if n is _EMPTY:
         return _itertools.repeat(obj)
     return _itertools.repeat(obj, n)
@@ -121,7 +120,7 @@ def inone(iterable, predicate):
     return all((not predicate(x)) for x in iterable)
 
 @Pipe
-def first(iterable: Iterable[_T]) -> Optional[_T]:
+def first(iterable):
     return next(iter(iterable), None)
 
 @Pipe
@@ -180,8 +179,8 @@ takewhile = take_while
 dropwhile = skipwhile = skip_while
 
 @Pipe
-def combinations(iterable):
-    return _itertools.combinations(iterable)
+def combinations(iterable, r):
+    return _itertools.combinations(iterable, r)
 
 @Pipe
 def cycle(iterable):
