@@ -45,4 +45,5 @@ Have fun!
 - add full type annotation support
     - piping (dunder ror) can be typed easily
     - there is seemingly no way to type varargs currying (supported by the original `pipe` library)
+    - use classes instead of functions for full type support??
 - alternative implementation on `chunk` for sequences (supports slicing)
