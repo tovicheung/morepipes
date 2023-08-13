@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "morepipes"
-version = "1.0.2"
+version = "1.0.3"
 description = "Extended pipes for functional programming"
 readme = "README.md"
 license = { file = "LICENSE" }
