@@ -336,18 +336,17 @@ if __name__ == "__main__":
     ) | collect(str) == "656667"
     # OR
     tostrcode = P | Pipe(ord) | Pipe(str)
-    assert "ABC" | imap(tostrcode) | collect(str) == "656667"
+    "ABC" | imap(tostrcode) | collect(str) | asserteq("656667")
     # OR
     tostrcode = P | ord | str
-    assert "ABC" | imap(tostrcode) | collect(str) == "656667"
+    "ABC" | imap(tostrcode) | collect(str) | asserteq("656667")
 
     range(9) | where(iseven) | asserteach(iseven) | consume
 
-    assert range(8) | reduce(lambda x, y: x + y) == range(8) | isum == 28
+    range(8) | reduce(lambda x, y: x + y) == range(8) | isum | asserteq(28)
 
     [[1, 2, 3], [4, 5, 6]] | traverse(P | reverse) | collect | asserteq([6, 5, 4, 3, 2, 1])
 
     # traverse subclasses
     object | traverse(type.__subclasses__) | consume
 
-    a = [1, 2, 3, 4] | first
