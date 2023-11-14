@@ -4,13 +4,11 @@ import itertools as _itertools
 import functools as _functools
 from collections import deque as _deque
 from collections.abc import Iterable, Sequence
-from typing import Generic, TypeVar, TYPE_CHECKING, Callable, ParamSpec, Optional
+from typing import TYPE_CHECKING, Callable
 
 if not TYPE_CHECKING:
     from pipe import Pipe
 
-_P = ParamSpec("_P")
-_R = TypeVar("_R")
 
 # Helpers
 
@@ -32,12 +30,12 @@ def _identity(x):
 # Typed for linters and type checkers, not used during runtime
 
 if TYPE_CHECKING:
-    class Pipe(Generic[_P, _R]):
-        def __init__(self, function: Callable[_P, _R]):
+    class Pipe[**P, R]:
+        def __init__(self, function: Callable[P, R]):
             self.function = function
             # _functools.update_wrapper(self, function)
 
-        def __ror__(self, *args: _P.args, **kwargs: _P.kwargs) -> _R:
+        def __ror__(self, *args: P.args, **kwargs: P.kwargs) -> R:
             # __ror__ always receive one argument
             # tell the type system to trust that all arguments are supplied
             return self.function(*args, **kwargs)
