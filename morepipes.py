@@ -1,33 +1,15 @@
 from __future__ import annotations
 
-import itertools as _itertools
-import functools as _functools
 from collections import deque as _deque
 from collections.abc import Iterable, Sequence
-from typing import TYPE_CHECKING, Callable
+import functools as _functools
+import itertools as _itertools
+from typing import TYPE_CHECKING, Callable, TypeVar, ParamSpec
 
-if not TYPE_CHECKING:
-    from pipe import Pipe
-
-
-# Helpers
-
-_EMPTY = object()
-
-def _consume(iterator):
-     # consume iterator at C speed without storing elements
-    _deque(iterator, maxlen=0)
-
-def _complement(func):
-    def f(*args, **kwargs):
-        return not func(*args, **kwargs)
-    return f
-
-def _identity(x):
-    return x
-
-
-# Typed for linters and type checkers, not used during runtime
+P = ParamSpec("P")
+R = TypeVar("R")
+T = TypeVar("T")
+U = TypeVar("U")
 
 if TYPE_CHECKING:
     class Pipe[**P, R]:
@@ -47,7 +29,24 @@ if TYPE_CHECKING:
                     iterable, *args, *args2, **kwargs, **kwargs2
                 )
             )
+else:
+    from pipe import Pipe
 
+# Helpers
+
+_SENTINEL = object()
+
+def _consume(iterator):
+     # consume iterator at C speed without storing elements
+    _deque(iterator, maxlen=0)
+
+def _complement(func):
+    def f(*args, **kwargs):
+        return not func(*args, **kwargs)
+    return f
+
+def _identity(x):
+    return x
 
 # Partial pipes
 
@@ -56,7 +55,7 @@ class _PartialPipe(Pipe):
         # Enables passing partial pipes to map functions
         return self.function(arg)
 
-    def __or__(self, other) -> "_PartialPipe":
+    def __or__(self, other) -> _PartialPipe:
         if isinstance(other, Pipe):
             return type(self)(lambda obj, *args, **kwargs: other.function(self.function(obj, *args, **kwargs)))
         if callable(other):
@@ -70,94 +69,27 @@ P = _PartialPipe(_identity) # the HEAD of partial pipes must be constructed with
 # These pipes take in objects of any type and generate an iterator for piping
 
 @Pipe
-def repeat(obj, n=_EMPTY):
-    if n is _EMPTY:
+def repeat(obj: T, n=_SENTINEL) -> Iterable[T]:
+    if n is _SENTINEL:
         return _itertools.repeat(obj)
     return _itertools.repeat(obj, n)
-
-
-# Iteration tails
-# These pipes should be the tail of a chain of lazily-evaluated pipes in most cases
-# They consume the iterator with the pipes
-
-from pipe import sort, reverse
-
-@Pipe
-def collect(iterable, typ=list):
-    # consumes iterator if typ is not specified
-    if issubclass(typ, str):
-        return typ().join(iterable)
-    return typ(iterable)
-
-consume = Pipe(_consume)
-
-@Pipe
-def ilen(iterable):
-    counter = _itertools.count()
-    _consume(zip(iterable, counter))
-    return next(counter)
-
-@Pipe
-def flattento(iterable, typ):
-    return iterable | flatten | collect(typ)
-
-@Pipe
-def isum(iterable):
-    return sum(iterable)
-
-@Pipe
-def iall(iterable, predicate):
-    return all(predicate(x) for x in iterable)
-
-@Pipe
-def iany(iterable, predicate):
-    return any(predicate(x) for x in iterable)
-
-@Pipe
-def inone(iterable, predicate):
-    return all((not predicate(x)) for x in iterable)
-
-@Pipe
-def first(iterable):
-    return next(iter(iterable), None)
-
-@Pipe
-def last(iterable):
-    if isinstance(iterable, Sequence):
-        if len(iterable) < 1:
-            return None
-        return iterable[-1]
-    item = None
-    for item in iterable:
-        pass
-    return item
-
-@Pipe
-def find(iterable, predicate):
-    return iterable | where(predicate) | first
-
-@Pipe
-def reduce(iterable, predicate, initial=_EMPTY):
-    if initial is _EMPTY:
-        return _functools.reduce(predicate, iterable)
-    return _functools.reduce(predicate, iterable, initial)
 
 
 # Side effects
 # Items will pass right through unmodified
 
 @Pipe
-def foreach(iterable, func):
+def foreach(iterable: Iterable[T], func: Callable[[T]]) -> Iterable[T]:
     for item in iterable:
         func(item)
         yield item
 
 @Pipe
-def inspect(iterable):
+def inspect(iterable: Iterable[T]) -> Iterable[T]:
     return iterable | foreach(print)
 
 @Pipe
-def asserteach(iterable, predicate=_identity):
+def asserteach(iterable: Iterable[T], predicate: Callable[[T]] = _identity) -> Iterable[T]:
     for item in iterable:
         assert predicate(item)
         yield item
@@ -185,11 +117,11 @@ def cycle(iterable):
     return _itertools.cycle(iterable)
 
 @Pipe
-def enumerations(iterable): # could be ienumerate() ?
-    return enumerate(iterable)
+def enumerations(iterable: Iterable[T], start: int = 0) -> Iterable[tuple[int, T]]: # could be ienumerate() ?
+    return enumerate(iterable, start)
 
 @Pipe
-def take(iterable, n):
+def take(iterable: Iterable[T], n: int) -> Iterable[T]:
     # The original implementation (pipe.take) eats one more item
     it = iter(iterable)
     for _ in range(n):
@@ -199,11 +131,11 @@ def take(iterable, n):
             return
 
 @Pipe
-def drop(iterable, n):
+def drop(iterable: Iterable[T], n: int) -> Iterable[T]:
     return _itertools.islice(iterable, n, None)
 
 @Pipe
-def butlast(iterable):
+def butlast(iterable: Iterable[T]) -> Iterable[T]:
     it = iter(iterable)
     try:
         prev = next(it)
@@ -215,7 +147,7 @@ def butlast(iterable):
             prev = item
 
 @Pipe
-def flatten(iterable):
+def flatten(iterable: Iterable[T]) -> Iterable[T]:
     for item in iterable:
         if isinstance(item, Iterable):
             for x in item:
@@ -224,7 +156,7 @@ def flatten(iterable):
             yield item
 
 @Pipe
-def interpose(iterable, sep):
+def interpose(iterable: Iterable[T], sep: U) -> Iterable[T | U]:
     it = iter(iterable)
     try:
         yield next(it)
@@ -236,7 +168,7 @@ def interpose(iterable, sep):
             yield item
 
 @Pipe
-def chunks(iterable, n):
+def chunks(iterable: Iterable[T], n: int) -> Iterable[tuple[T, ...]]:
     it = iter(iterable)
     chunk = it | take(n) | collect
     while True:
@@ -246,11 +178,11 @@ def chunks(iterable, n):
         chunk = it | take(n) | collect
 
 @Pipe
-def alternate(iterable):
+def alternate(iterable: Iterable[T]) -> Iterable[T]:
     return iterable | enumerations | where(lambda x: x[0] % 2 == 0) | imap(lambda x: x[1])
 
 @Pipe
-def unique(iterable):
+def unique(iterable: Iterable[T]) -> Iterable[T]:
     # not to be confused with pipe.uniq
     seen = set()
     for item in iterable:
@@ -259,8 +191,8 @@ def unique(iterable):
             yield item
 
 @Pipe
-def squeeze(iterable):
-    prev = object()
+def squeeze(iterable: Iterable[T]) -> Iterable[T]:
+    prev = _SENTINEL
     for item in iterable:
         if item != prev:
             yield item
@@ -278,22 +210,85 @@ def traverse(objs, key=_identity):
             yield obj
 
 
-# Transform and filter iterables
-# Length of iterable may change (often by predicate), lazily evaluated
+# Transform and filter
+# Length of iterable may change, lazily evaluated
 
 from pipe import select, where
 
 imap = select
 
 @Pipe
-def wherenot(iterable, predicate):
+def wherenot(iterable: Iterable[T], predicate: Callable[[T]]) -> Iterable[T]:
     return filter(_complement(predicate), iterable)
 
 reject = wherenot # not related to select
 
 @Pipe
-def keep(iterable, f):
-    return iterable | imap(f) | where(bool)
+def truthy(iterable: Iterable[T]) -> Iterable[T]:
+    return iterable | where(bool)
+
+
+# Pipe tails
+# These pipes should be the tail of a chain of lazily-evaluated pipes in most cases
+# They consume the iterator with the pipes
+
+from pipe import sort, reverse
+
+@Pipe
+def collect(iterable: Iterable[T], typ: type[U] = list) -> U:
+    # consumes iterator if typ is not specified
+    if issubclass(typ, str):
+        return typ().join(iterable)
+    return typ(iterable)
+
+consume = Pipe(_consume)
+
+@Pipe
+def ilen(iterable) -> int:
+    counter = _itertools.count()
+    _consume(zip(iterable, counter))
+    return next(counter)
+
+@Pipe
+def isum(iterable):
+    return sum(iterable)
+
+@Pipe
+def iall(iterable, predicate):
+    return all(predicate(x) for x in iterable)
+
+@Pipe
+def iany(iterable, predicate):
+    return any(predicate(x) for x in iterable)
+
+@Pipe
+def inone(iterable, predicate):
+    return all((not predicate(x)) for x in iterable)
+
+@Pipe
+def first(iterable):
+    return next(iter(iterable), None)
+
+@Pipe
+def last(iterable: Iterable[T]) -> T:
+    if isinstance(iterable, Sequence):
+        if len(iterable) < 1:
+            return None
+        return iterable[-1]
+    item = None
+    for item in iterable:
+        pass
+    return item
+
+@Pipe
+def find(iterable: Iterable[T], predicate: Callable[[T]]) -> T:
+    return iterable | where(predicate) | first
+
+@Pipe
+def reduce(iterable, predicate, initial=_SENTINEL):
+    if initial is _SENTINEL:
+        return _functools.reduce(predicate, iterable)
+    return _functools.reduce(predicate, iterable, initial)
 
 
 if __name__ == "__main__":
@@ -305,11 +300,11 @@ if __name__ == "__main__":
 
     assert range(9) | butlast | collect == list(range(8))
     assert range(9) | take(3) | ilen == 3
-    assert [[1, 2, 3], (9, 8, 7), 4, 6] | flatten | collect == [[1, 2, 3], (9, 8, 7), 4, 6] | flattento(list) == [1, 2, 3, 9, 8, 7, 4, 6]
+    assert [[1, 2, 3], (9, 8, 7), 4, 6] | flatten | collect == [1, 2, 3, 9, 8, 7, 4, 6]
     assert range(4) | interpose(-1) | collect == [0, -1, 1, -1, 2, -1, 3]
 
     assert range(9) | where(iseven) | wherenot(ismul3) | collect == [2, 4, 8]
-    assert range(9) | keep(lambda x: x % 3) | collect == [1, 2, 1, 2, 1, 2]
+    assert range(9) | imap(lambda x: x % 3) | truthy | collect == [1, 2, 1, 2, 1, 2]
 
     s = P | where(iseven) | wherenot(ismul3)
     assert range(9) | s | collect == [2, 4, 8]
